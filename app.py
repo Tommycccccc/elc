@@ -154,14 +154,69 @@ def norm_city(val: str) -> str:
     return v
 
 @st.cache_data
-def load_contacts(path: Path):
+def load_contacts(path: Path) -> pd.DataFrame:
     xl = pd.ExcelFile(path)
-    contacts = xl.parse("contacts").fillna("")
-    contacts.columns = [c.strip() for c in contacts.columns]
-    contacts["_n_county"] = contacts["County"].map(norm_county)
-    contacts["_n_city"]   = contacts["City"].map(norm_city)
-    contacts["_n_dept"]   = contacts["Dept Type"].astype(str).str.strip().str.lower()
-    return contacts
+
+    # 1) Pick a sheet robustly (case-insensitive match), else use first sheet
+    lower_map = {name.strip().lower(): name for name in xl.sheet_names}
+    for candidate in ("contacts", "contact", "directory", "master", "data", "sheet1"):
+        if candidate in lower_map:
+            sheet = lower_map[candidate]
+            break
+    else:
+        sheet = xl.sheet_names[0]
+        st.info(f"Using sheet '{sheet}' (no sheet named 'contacts' found).")
+
+    df = xl.parse(sheet).copy()
+    df.columns = [c.strip() for c in df.columns]
+
+    # 2) Normalize/rename common column variations -> standard names used by the app
+    rename_pairs = {
+        "County": ["County"],
+        "City": ["City", "Municipality", "Municipality / City", "Municipality/City"],
+        "Dept Type": ["Dept Type", "Department Type", "Dept"],
+        "Dept Name": ["Dept Name", "Department Name"],
+        "Contact": ["Contact", "Contact Person"],
+        "Title/Role": ["Title/Role", "Title", "Role"],
+        "Phone": ["Phone", "Phone Number"],
+        "Email": ["Email", "Emails"],
+        "Portal URL": ["Portal URL", "Portal", "Public Records Portal", "Records Portal"],
+        "Preferred Method": ["Preferred Method", "Method"],
+        "Notes": ["Notes", "Note"],
+        "Verified": ["Verified"],
+        "Date Verified": ["Date Verified", "Verified Date", "Date Verified (YYYY-MM-DD)"],
+    }
+
+    rename_map = {}
+    for std, alts in rename_pairs.items():
+        for alt in alts:
+            if alt in df.columns:
+                rename_map[alt] = std
+                break
+    df = df.rename(columns=rename_map)
+
+    # 3) Validate required columns
+    required = ["County", "City", "Dept Type", "Dept Name"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        st.error(
+            "Your workbook is missing required columns: "
+            f"{missing}. Found: {list(df.columns)}"
+        )
+        # Return an empty compatible frame to avoid hard crashes
+        return pd.DataFrame(columns=required + [
+            "Contact","Title/Role","Phone","Email","Portal URL",
+            "Preferred Method","Notes","Verified","Date Verified"
+        ])
+
+    # 4) Fill NA and add normalized keys used by the matcher
+    df = df.fillna("")
+    df["_n_county"] = df["County"].astype(str).map(norm_county)
+    df["_n_city"]   = df["City"].astype(str).map(norm_city)
+    df["_n_dept"]   = df["Dept Type"].astype(str).str.strip().str.lower()
+
+    return df
+
 
 def geocode_address(addr: str):
     url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
@@ -185,14 +240,32 @@ def geocode_address(addr: str):
     return {"city": city, "county": county, "state": comps.get("state","FL")}, None
 
 def match_contacts(contacts, county, city):
+    """
+    Match contacts by county + (city or unincorporated), and ALWAYS include
+    countywide wildcard rows where City == '*'.
+    Returns: (matched_df, used_exact_city: bool)
+    """
     ncounty, ncity = norm_county(county), norm_city(city)
-    exact = contacts[(contacts["_n_county"]==ncounty) & (contacts["_n_city"]==ncity)]
-    if not exact.empty: return exact, True
-    uninc = contacts[(contacts["_n_county"]==ncounty) & (contacts["_n_city"]=="unincorporated")]
-    if not uninc.empty: return uninc, False
-    anyc  = contacts[(contacts["_n_county"]==ncounty) & (contacts["_n_city"]=="*")]
-    if not anyc.empty: return anyc, False
+
+    in_county = contacts[contacts["_n_county"] == ncounty]
+    exact     = in_county[in_county["_n_city"] == ncity]
+    uninc     = in_county[in_county["_n_city"] == "unincorporated"]
+    wildcard  = in_county[in_county["_n_city"] == "*"]
+
+    if not exact.empty:
+        res = pd.concat([exact, wildcard], ignore_index=True).drop_duplicates()
+        return res, True
+
+    if not uninc.empty:
+        res = pd.concat([uninc, wildcard], ignore_index=True).drop_duplicates()
+        return res, False
+
+    if not wildcard.empty:
+        return wildcard, False
+
+    # Nothing found
     return contacts.iloc[0:0], False
+
 
 def split_by_dept(df):
     out = {}
@@ -222,10 +295,22 @@ def portal_urls(df):
             out.append(u); seen.add(u)
     return out
 
+# ---------- OCULUS helper ----------
+def _oculus_base_url() -> str:
+    base = "https://depedms.dep.state.fl.us/Oculus/servlet/lookupUtility"
+    params = {
+        "catalog": "11",
+        "profile": "Administrative",
+        "CallingProperty": "Facility-Site ID",
+        "process": "search",
+    }
+    return f"{base}?{urllib.parse.urlencode(params)}"
+
+
 # =============== App ===============
 contacts = load_contacts(DATA_PATH)
 
-tab1, tab2 = st.tabs(["📒 Directory", "🧭 Jurisdiction Finder"])
+tab1, tab2, tab3 = st.tabs(["📒 Directory", "🧭 Jurisdiction Finder", "🔎 OCULUS Search"])
 
 with tab1:
     st.header("ELC Public Records Directory")
@@ -256,6 +341,7 @@ with tab2:
     with st.form("req_form"):
         addr = st.text_input("Address*", placeholder="e.g., 17520 Rockefeller Circle, Fort Myers, FL 33967")
         county_override = st.text_input("County")
+        municipality_override = st.text_input("City / Municipality")  # NEW
         apn = st.text_input("APN / Parcel #", placeholder="e.g., 08-46-25-15-00008.0410")
         project = st.text_input("Project #", placeholder="e.g., 25-XXXX")
         submitted = st.form_submit_button("Find")
@@ -266,72 +352,108 @@ with tab2:
         else:
             with st.spinner("Geocoding & matching..."):
                 info, err = geocode_address(addr + ", FL")
-                if county_override.strip():
-                    info = info or {}
-                    info["county"] = county_override.strip()
-                if err and not county_override.strip():
+                if err and not county_override.strip() and not municipality_override.strip():
                     st.error(err)
                 else:
-                    city, county = info.get("city",""), info.get("county","")
-                    st.success(f"Matched to: {city} — {county}")
-                    matched, incorporated = match_contacts(contacts, county, city)
-                    if matched.empty:
-                        st.warning("No contacts configured yet for this jurisdiction.")
+                    # apply overrides if provided
+                    geocoded_city = (info or {}).get("city", "")
+                    geocoded_county = (info or {}).get("county", "")
+                    final_city = municipality_override.strip() or geocoded_city
+                    final_county = county_override.strip() or geocoded_county
+
+                    if not final_county:
+                        st.error("Could not determine county. Please provide a county override.")
                     else:
-                        depts = split_by_dept(matched)
-                        ctx = {"address": addr, "city": city, "county": county, "apn": apn, "project": project}
+                        st.success(f"Using jurisdiction: {final_city or '(unincorporated)'} — {final_county}")
 
-                        for dep_key, dep_label in [("building","Building"),("planning","Planning"),("environmental","Environmental"),("fire","Fire")]:
-                            st.subheader(dep_label)
-                            df = depts.get(dep_key, pd.DataFrame())
-                            if df.empty:
-                                st.info("No contact configured in your workbook.")
-                                continue
-                            show = ["County","City","Dept Type","Dept Name","Contact","Email","Portal URL","Preferred Method","Notes"]
-                            show = [c for c in show if c in df.columns]
-                            st.dataframe(df[show], use_container_width=True)
+                        matched, _ = match_contacts(contacts, final_county, final_city)
+                        if matched.empty:
+                            st.warning("No contacts configured yet for this jurisdiction.")
+                        else:
+                            depts = split_by_dept(matched)
+                            ctx = {
+                                "address": addr,
+                                "city": final_city,
+                                "county": final_county,
+                                "apn": apn,
+                                "project": project
+                            }
 
-                            # Portal buttons (from sheet)
-                            for url in portal_urls(df):
-                                st.link_button("Open Portal", url)
+                            for dep_key, dep_label in [("building","Building"),("planning","Planning"),("environmental","Environmental"),("fire","Fire")]:
+                                st.subheader(dep_label)
+                                df = depts.get(dep_key, pd.DataFrame())
+                                if df.empty:
+                                    st.info("No contact configured in your workbook.")
+                                    continue
+                                show = ["County","City","Dept Type","Dept Name","Contact","Email","Portal URL","Preferred Method","Notes"]
+                                show = [c for c in show if c in df.columns]
+                                st.dataframe(df[show], use_container_width=True)
 
-                            # Email
-                            tpl = TEMPLATES.get(dep_key)
-                            if tpl:
-                                subj = tpl["subject"]
-                                body = tpl["body"].format(**ctx)
-                                st.markdown("**Subject:** " + subj)
-                                st.text_area("Email body", body, height=260, key=f"body_{dep_key}")
-                                emails = email_list(df)
-                                if emails:
-                                    st.code(", ".join(emails))
+                                # Portal buttons (from sheet)
+                                for url in portal_urls(df):
+                                    st.link_button("Open Portal", url)
 
-                        # ---------- All-in-one Email (after the four depts) ----------
-                        dept_emails_map = {
-                            "building": email_list(depts.get("building", pd.DataFrame())),
-                            "planning": email_list(depts.get("planning", pd.DataFrame())),
-                            "environmental": email_list(depts.get("environmental", pd.DataFrame())),
-                            "fire": email_list(depts.get("fire", pd.DataFrame())),
-                        }
-                        all_emails = sorted({e for lst in dept_emails_map.values() for e in lst})
+                                # Email
+                                tpl = TEMPLATES.get(dep_key)
+                                if tpl:
+                                    subj = tpl["subject"]
+                                    body = tpl["body"].format(**ctx)
+                                    st.markdown("**Subject:** " + subj)
+                                    st.text_area("Email body", body, height=260, key=f"body_{dep_key}")
+                                    emails = email_list(df)
+                                    if emails:
+                                        st.code(", ".join(emails))
 
-                        ctx_all = dict(ctx)
-                        ctx_all.update({
-                            "building_emails": ", ".join(dept_emails_map["building"]),
-                            "planning_emails": ", ".join(dept_emails_map["planning"]),
-                            "environmental_emails": ", ".join(dept_emails_map["environmental"]),
-                            "fire_emails": ", ".join(dept_emails_map["fire"]),
-                            "all_emails": ", ".join(all_emails),
-                        })
+                            # ---------- All-in-one Email (after the four depts) ----------
+                            dept_emails_map = {
+                                "building": email_list(depts.get("building", pd.DataFrame())),
+                                "planning": email_list(depts.get("planning", pd.DataFrame())),
+                                "environmental": email_list(depts.get("environmental", pd.DataFrame())),
+                                "fire": email_list(depts.get("fire", pd.DataFrame())),
+                            }
+                            all_emails = sorted({e for lst in dept_emails_map.values() for e in lst})
 
-                        st.subheader("All-in-one Email")
-                        tpl_all = TEMPLATES.get("all")
-                        if tpl_all:
-                            subj_all = tpl_all["subject"]
-                            body_all = tpl_all["body"].format(**ctx_all)
-                            st.markdown("**Subject:** " + subj_all)
-                            st.text_area("Email body (all depts)", body_all, height=260, key="body_all")
-                            if all_emails:
-                                st.code(", ".join(all_emails))
-                            else:
-                                st.info("No emails found to send an all-in-one request for this jurisdiction.")
+                            ctx_all = dict(ctx)
+                            ctx_all.update({
+                                "building_emails": ", ".join(dept_emails_map["building"]),
+                                "planning_emails": ", ".join(dept_emails_map["planning"]),
+                                "environmental_emails": ", ".join(dept_emails_map["environmental"]),
+                                "fire_emails": ", ".join(dept_emails_map["fire"]),
+                                "all_emails": ", ".join(all_emails),
+                            })
+
+                            st.subheader("All-in-one Email")
+                            tpl_all = TEMPLATES.get("all")
+                            if tpl_all:
+                                subj_all = tpl_all["subject"]
+                                body_all = tpl_all["body"].format(**ctx_all)
+                                st.markdown("**Subject:** " + subj_all)
+                                st.text_area("Email body (all depts)", body_all, height=260, key="body_all")
+                                if all_emails:
+                                    st.code(", ".join(all_emails))
+                                else:
+                                    st.info("No emails found to send an all-in-one request for this jurisdiction.")
+with tab3:
+    st.header("Florida DEP — OCULUS Quick Search")
+
+    st.markdown("Enter the **street address** and **county** you want to look up, then click the button to open OCULUS. "
+                "Paste these values into the OCULUS form and press **Search** there.")
+
+    addr_only = st.text_input("Address (street only)", placeholder="e.g., 11375 Biscayne Boulevard")
+    county_in = st.text_input("County", placeholder="e.g., Miami-Dade")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.text_input("Copy to OCULUS → Address", value=addr_only or "", key="oc_addr_copy")
+    with c2:
+        st.text_input("Copy to OCULUS → County", value=(county_in or "").upper(), key="oc_county_copy")
+
+    st.link_button("Open OCULUS Search", _oculus_base_url())
+
+    # (Optional) show OCULUS inside the app as well — you can keep or remove this:
+    with st.expander("Open OCULUS inside the app (optional)"):
+        st.components.v1.iframe(_oculus_base_url(), height=620, scrolling=True)
+
+    st.caption("Note: OCULUS doesn’t accept those field values via URL. "
+               "Use the ‘Copy to OCULUS’ boxes above to paste Address and County into the OCULUS form, then click **Search**.")
+
