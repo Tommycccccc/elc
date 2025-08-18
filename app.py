@@ -32,7 +32,7 @@ if st.session_state._sync_nav:
     st.session_state.nav_choice = st.session_state.active_page
     st.session_state._sync_nav = False
 
-# =============== Hard-coded templates (clean formatting) ===============
+# =============== Hard-coded templates — ELC (current) ===============
 TEMPLATES = {
     "building": {
         "subject": "Freedom of Information Act (FOIA) Request/File Review Request",
@@ -158,6 +158,88 @@ Environmental Department
 """
     },
 }
+
+# =============== Hard-coded templates — AEI (placeholder; edit me) ===============
+# Keep the same keys so the app can swap seamlessly. Replace the bodies with AEI’s exact language.
+TEMPLATES_AEI = {
+    "building": {
+        "subject": "Records Request – Environmental Site Assessment",
+        "body": """{county} Building Department
+
+Address: {address}
+Parcel ID#: {apn}
+Project No. {project}
+
+To whom it may concern:
+
+AEI Consultants is conducting a Phase I Environmental Site Assessment for the above-referenced property.
+Please provide available records related to permits, construction history, site plans, tenant history and any enforcement/complaints on file.
+
+Thank you for your assistance."""
+    },
+    "planning": {
+        "subject": "Records Request – Planning/Zoning",
+        "body": """{county} Planning Department
+
+Address: {address}
+Parcel ID#: {apn}
+Project No. {project}
+
+To whom it may concern:
+
+Please provide zoning designation, current/past zoning violations, and any Activity and Use Limitations (AULs)
+or land-use controls associated with the subject property.
+
+Thank you."""
+    },
+    "fire": {
+        "subject": "Records Request – Fire Department",
+        "body": """{county} Fire Department
+
+Address: {address}
+Parcel ID#: {apn}
+Project No. {project}
+
+To whom it may concern:
+
+Please provide records of hazardous materials usage/storage/incidents, inspections, and any UST/AST information for the subject property.
+
+Thank you."""
+    },
+    "environmental": {
+        "subject": "Records Request – Environmental/Health",
+        "body": """{county} Environmental/Health Department
+
+Address: {address}
+Parcel ID#: {apn}
+Project No. {project}
+
+To whom it may concern:
+
+Please provide records of hazardous materials/contamination, septic/well permits and repairs, and UST/AST registrations or releases for the subject property.
+
+Thank you."""
+    },
+    "all": {
+        "subject": "Records Request – All Departments",
+        "body": """{county} County/City Clerk
+
+Address: {address}
+Parcel ID#: {apn}
+Project No. {project}
+
+To whom it may concern:
+
+AEI Consultants requests available records from Building, Planning/Zoning, Fire, and Environmental/Health
+that pertain to the subject property, including permits, zoning/AULs, fire incidents/inspections, UST/AST,
+septic/well, and any violations or enforcement.
+
+Thank you."""
+    },
+}
+
+# Group for easy switching
+TEMPLATE_SETS = {"ELC": TEMPLATES, "AEI": TEMPLATES_AEI}
 
 # =============== Helpers ===============
 def norm_county(val: str) -> str:
@@ -306,9 +388,8 @@ st.radio(
     "Navigate",
     PAGES,
     horizontal=True,
-    key="nav_choice",   # no index parameter -> no yellow warning
+    key="nav_choice",
 )
-# Keep router in sync with the radio selection
 st.session_state.active_page = st.session_state.nav_choice
 
 # ---------------------- PAGES --------------------------
@@ -336,9 +417,13 @@ def page_directory():
     cols = [c for c in ["County","City","Dept Type","Dept Name","Contact","Title/Role","Phone","Email","Portal URL","Preferred Method","Notes","Verified","Date Verified"] if c in filtered.columns]
     st.dataframe(filtered[cols], use_container_width=True, height=460)
 
-def _run_and_render_search(addr, county_override, municipality_override, apn, project):
+def _run_and_render_search(addr, county_override, municipality_override, apn, project, project_type):
     if not addr.strip():
         st.error("Address is required."); return
+
+    # Pick template set by project type
+    templates = TEMPLATE_SETS.get(project_type, TEMPLATES)
+
     with st.spinner("Geocoding & matching..."):
         info, err = geocode_address(addr + ", FL")
         if err and not county_override.strip() and not municipality_override.strip():
@@ -350,7 +435,7 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
         if not final_county:
             st.error("Could not determine county. Please provide a county override."); return
 
-        st.success(f"Using jurisdiction: {final_city or '(unincorporated)'} — {final_county}")
+        st.success(f"Using jurisdiction: {final_city or '(unincorporated)'} — {final_county} · Project type: {project_type}")
         matched, _ = match_contacts(contacts, final_county, final_city)
         if matched.empty:
             st.warning("No contacts configured yet for this jurisdiction."); return
@@ -371,12 +456,12 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
             for url in portal_urls(df):
                 st.link_button("Open Portal", url)
 
-            tpl = TEMPLATES.get(dep_key)
+            tpl = templates.get(dep_key)
             if tpl:
                 subj = tpl["subject"]
                 body = tpl["body"].format(**ctx)
                 st.markdown("**Subject:** " + subj)
-                st.text_area("Email body", body, height=260, key=f"body_{dep_key}")
+                st.text_area("Email body", body, height=260, key=f"{project_type}_body_{dep_key}")
                 emails = email_list(df)
                 if emails:
                     st.code(", ".join(emails))
@@ -399,12 +484,12 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
         })
 
         st.subheader("All-in-one Email")
-        tpl_all = TEMPLATES.get("all")
+        tpl_all = templates.get("all")
         if tpl_all:
             subj_all = tpl_all["subject"]
             body_all = tpl_all["body"].format(**ctx_all)
             st.markdown("**Subject:** " + subj_all)
-            st.text_area("Email body (all depts)", body_all, height=260, key="body_all")
+            st.text_area("Email body (all depts)", body_all, height=260, key=f"{project_type}_body_all")
             if all_emails:
                 st.code(", ".join(all_emails))
             else:
@@ -418,6 +503,15 @@ def page_jurisdiction():
         municipality_override = st.text_input("City / Municipality")
         apn = st.text_input("APN / Parcel #", placeholder="e.g., 08-46-25-15-00008.0410")
         project = st.text_input("Project #", placeholder="e.g., 25-XXXX")
+
+        # --------- NEW: Project type switch (ELC vs AEI) ----------
+        project_type = st.radio(
+            "Project type",
+            options=["ELC", "AEI"],
+            horizontal=True,
+            help="Choose which firm’s templates to use for the request package."
+        )
+
         submitted = st.form_submit_button("Find")
 
     if submitted:
@@ -427,16 +521,22 @@ def page_jurisdiction():
             "municipality_override": municipality_override,
             "apn": apn,
             "project": project,
+            "project_type": project_type,
         }
-        # programmatic nav: update router and tell radio to sync next run
         st.session_state.active_page = "🧭 Jurisdiction Finder"
         st.session_state._sync_nav = True
         st.rerun()
 
-    # Render last (or current) search if any
     if st.session_state.pending_search:
         ps = st.session_state.pending_search
-        _run_and_render_search(ps["addr"], ps["county_override"], ps["municipality_override"], ps["apn"], ps["project"])
+        _run_and_render_search(
+            ps["addr"],
+            ps["county_override"],
+            ps["municipality_override"],
+            ps["apn"],
+            ps["project"],
+            ps.get("project_type", "ELC"),
+        )
 
 def page_oculus():
     st.subheader("Florida DEP — OCULUS Quick Search")
