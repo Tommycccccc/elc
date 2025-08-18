@@ -163,65 +163,99 @@ Environmental Department
 # Keep the same keys so the app can swap seamlessly. Replace the bodies with AEI’s exact language.
 TEMPLATES_AEI = {
     "building": {
-        "subject": "Records Request – Environmental Site Assessment",
+        "subject": "Freedom of Information Act (FOIA) Request/File Review Request ",
         "body": """{county} Building Department
 
 Address: {address}
 Parcel ID#: {apn}
 Project No. {project}
 
-To whom it may concern:
+To Whom It May Concern:
 
-AEI Consultants is conducting a Phase I Environmental Site Assessment for the above-referenced property.
-Please provide available records related to permits, construction history, site plans, tenant history and any enforcement/complaints on file.
+Please accept this request for any information/documentation/files with your department regarding the above-referenced subject property. 
 
-Thank you for your assistance."""
+AEI Consultants is currently conducting a Phase I Environmental Site Assessment for the property. The current ASTM E1527 Standard Practice for Environmental Site Assessments requires a records search be conducted with local regulatory departments for information regarding the subject property. Of particular interest are the following items:
+
+- Available permits, licenses, and certificates of occupancy (including oldest historical records) OR permit summary (date, type of permit, applicant/tenant) 
+  (NOTE: upon review of a permit summary, we may request review of individual permits)
+- Construction date(s) [current building(s), and previous building(s) if applicable]
+- List of tenants which have occupied the subject property
+- Permits of environmental concern (e.g., petroleum storage tanks, septic systems, oil/water separators)
+- Oldest and most recent maps and site layout plan of the subject property (if available)
+- Records of any major environmental violations or significant complaints registered against the subject property
+
+Please indicate if older historical records have been archived and require additional fees for retrieval.
+"""
     },
     "planning": {
-        "subject": "Records Request – Planning/Zoning",
+        "subject": "Freedom of Information Act (FOIA) Request/File Review Request ",
         "body": """{county} Planning Department
 
 Address: {address}
 Parcel ID#: {apn}
 Project No. {project}
 
-To whom it may concern:
+To Whom It May Concern:
 
-Please provide zoning designation, current/past zoning violations, and any Activity and Use Limitations (AULs)
-or land-use controls associated with the subject property.
+Please accept this request for any information/documentation/files with your department regarding the above-referenced subject property. 
 
-Thank you."""
+AEI Consultants is currently conducting a Phase I Environmental Site Assessment for the property. The current ASTM E1527 Standard Practice for Environmental Site Assessments requires a records search be conducted with local regulatory departments for information regarding the subject property. Of particular interest are the following items:
+
+- Building permit history (including recent, historical, and archived records);
+- Other relevant information regarding historical development and former use/occupancy at the subject property; and/or
+- Environmental property use limitations/restrictions related to contamination and/or other environmental conditions at the subject property (e.g., environmental deed restrictions, groundwater use restrictions, methane zones)
+"""
     },
     "fire": {
-        "subject": "Records Request – Fire Department",
+        "subject": "Freedom of Information Act (FOIA) Request/File Review Request ",
         "body": """{county} Fire Department
 
 Address: {address}
 Parcel ID#: {apn}
 Project No. {project}
 
-To whom it may concern:
+To Whom It May Concern:
 
-Please provide records of hazardous materials usage/storage/incidents, inspections, and any UST/AST information for the subject property.
+Please accept this request for any information/documentation/files with your department regarding the above-referenced property. 
 
-Thank you."""
+AEI Consultants is currently conducting a Phase I Environmental Site Assessment for the property. The current ASTM E1527 Standard Practice for Environmental Site Assessments requires a records search be conducted with local regulatory departments for information regarding the subject property. Of particular interest are the following items:
+
+- Records of fire inspections at the subject property; 
+- Records regarding petroleum product and/or hazardous substance usage/storage at the subject property (i.e., permits, inspections, hazardous materials business plans, SPCC plans, maps, site plans, chemical inventories);
+- Records regarding aboveground storage tank (AST) and/or underground storage tank (UST) systems at the subject property;
+- Records of hazardous substance and/or petroleum product releases, contamination or other known environmental concerns which may have affected the subject property; and/or
+- Records of significant fires that may have used AFFF/Class B firefighting foams at the subject property.
+
+NOTE: we are interested in both current and historical records pertaining to the items listed above.
+"""
     },
     "environmental": {
-        "subject": "Records Request – Environmental/Health",
+        "subject": "Freedom of Information Act (FOIA) Request/File Review Request ",
         "body": """{county} Environmental/Health Department
 
 Address: {address}
 Parcel ID#: {apn}
 Project No. {project}
 
-To whom it may concern:
+To Whom It May Concern:
 
-Please provide records of hazardous materials/contamination, septic/well permits and repairs, and UST/AST registrations or releases for the subject property.
+Please accept this request for any information/documentation/files with your department regarding the above-referenced property. 
 
-Thank you."""
+AEI Consultants is currently conducting a Phase I Environmental Site Assessment for the property. The current ASTM E1527 Standard Practice for Environmental Site Assessments requires a records search be conducted with regulatory departments for information regarding the subject property. Of particular interest are the following items:
+
+- Records regarding petroleum product and/or hazardous substance usage/storage at the subject property (i.e., permits, inspections, hazardous materials business plans, SPCC plans, maps, site plans, chemical inventories);
+- Records regarding aboveground storage tank (AST) and/or underground storage tank (UST) systems at the subject property;
+- Records of hazardous substance and/or petroleum product releases, contamination or other known environmental concerns which may have affected the subject property;
+- Records of violations or corrective actions;
+- Records of septic system installations and repairs at the subject property; 
+- Records of wells in connection with the subject property; and/or
+- Environmental permits (wastewater discharges and/or air emissions) and the most recent associated effluent/emission sampling.
+
+NOTE: we are interested in both current and historical records pertaining to the items listed above.
+"""
     },
     "all": {
-        "subject": "Records Request – All Departments",
+        "subject": "Freedom of Information Act (FOIA) Request/File Review Request ",
         "body": """{county} County/City Clerk
 
 Address: {address}
@@ -230,11 +264,38 @@ Project No. {project}
 
 To whom it may concern:
 
-AEI Consultants requests available records from Building, Planning/Zoning, Fire, and Environmental/Health
-that pertain to the subject property, including permits, zoning/AULs, fire incidents/inspections, UST/AST,
-septic/well, and any violations or enforcement.
+Please accept this as a request for any information/documentation/files with your department regarding the above-referenced property. ASTM Practice E1527 Standard Practice of Environmental Site Assessments requires that a records search be conducted with local regulatory departments for information regarding the subject property. Of particular interest are the following items:
 
-Thank you."""
+Building Department
+- Available permits, licenses, and certificates of occupancy (including oldest historical records) OR permit summary (date, type of permit, applicant/tenant) 
+  (NOTE: upon review of a permit summary, we may request review of individual permits)
+- Construction date(s) [current building(s), and previous building(s) if applicable]
+- List of tenants which have occupied the subject property
+- Permits of environmental concern (e.g., petroleum storage tanks, septic systems, oil/water separators)
+- Oldest and most recent maps and site layout plan of the subject property (if available)
+- Records of any major environmental violations or significant complaints registered against the subject property
+
+Planning Department
+- Environmental property use limitations/restrictions related to contamination and/or other environmental conditions at the subject property (e.g., environmental deed restrictions, groundwater use restrictions, methane zones)
+- Subject property zoning and any current zoning violations.
+
+Fire Department
+- Records of fire inspections at the subject property; 
+- Records regarding petroleum product and/or hazardous substance usage/storage at the subject property (i.e., permits, inspections, hazardous materials business plans, SPCC plans, maps, site plans, chemical inventories);
+- Records regarding aboveground storage tank (AST) and/or underground storage tank (UST) systems at the subject property;
+- Records of hazardous substance and/or petroleum product releases, contamination or other known environmental concerns which may have affected the subject property; and/or
+- Records of significant fires that may have used AFFF/Class B firefighting foams at the subject property.
+
+Environmental Department
+- Records regarding petroleum product and/or hazardous substance usage/storage at the subject property (i.e., permits, inspections, hazardous materials business plans, SPCC plans, maps, site plans, chemical inventories);
+- Records regarding aboveground storage tank (AST) and/or underground storage tank (UST) systems at the subject property;
+- Records of hazardous substance and/or petroleum product releases, contamination or other known environmental concerns which may have affected the subject property;
+- Records of violations or corrective actions;
+- Records of septic system installations and repairs at the subject property; 
+- Records of wells in connection with the subject property; and/or
+- Environmental permits (wastewater discharges and/or air emissions) and the most recent associated effluent/emission sampling.
+
+"""
     },
 }
 
@@ -378,6 +439,58 @@ def _oculus_base_url() -> str:
     }
     return f"{base}?{urllib.parse.urlencode(params)}"
 
+# ---- Miami-Dade folio (APN) → municipality code map ----
+MIAMI_DADE_CODES = {
+    "01": "Miami",
+    "02": "Miami Beach",
+    "03": "Coral Gables",
+    "04": "Hialeah",
+    "05": "Miami Springs",
+    "06": "North Miami",
+    "07": "North Miami Beach",
+    "08": "Opa-locka",
+    "09": "South Miami",
+    "10": "Homestead",
+    "11": "Miami Shores",
+    "12": "Bal Harbour",
+    "13": "Bay Harbor Island",
+    "14": "Surfside",
+    "15": "West Miami",
+    "16": "Florida City",
+    "17": "Biscayne Park",
+    "18": "El Portal",
+    "19": "Golden Beach",
+    "20": "Pinecrest",
+    "21": "Indian Creek",
+    "22": "Medley",
+    "23": "North Bay Village",
+    "24": "Key Biscayne",
+    "25": "Sweetwater",
+    "26": "Virginia Gardens",
+    "27": "Hialeah Gardens",
+    "28": "Aventura",
+    "29": "Islandia",
+    "30": "Unincorporated",
+    "31": "Sunny Isles Beach",
+    "32": "Miami Lakes",
+    "33": "Palmetto Bay",
+    "34": "Miami Gardens",
+    "35": "Doral",
+    "36": "Cutler Bay",
+}
+
+def _mdc_prefix_from_apn(apn: str) -> str | None:
+    """Return the first two digits of a Miami-Dade APN (folio) or None."""
+    if not isinstance(apn, str):
+        return None
+    digits = re.sub(r"\D", "", apn)
+    return digits[:2] if len(digits) >= 2 else None
+
+def _mdc_expected_city_from_apn(apn: str) -> str | None:
+    """Return expected municipality name from APN prefix, or None if unknown."""
+    code = _mdc_prefix_from_apn(apn)
+    return MIAMI_DADE_CODES.get(code) if code else None
+
 # =======================================================
 contacts = load_contacts(DATA_PATH)
 
@@ -436,12 +549,37 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
             st.error("Could not determine county. Please provide a county override."); return
 
         st.success(f"Using jurisdiction: {final_city or '(unincorporated)'} — {final_county} · Project type: {project_type}")
+
+        # ---- Miami-Dade APN prefix → municipality validation ----
+        county_norm = norm_county(final_county)
+        if county_norm in {"miami-dade", "miami dade", "miamidade"}:
+            expected_city = _mdc_expected_city_from_apn(apn)
+            if expected_city:
+                entered_city_norm = norm_city(final_city) or "unincorporated"
+                expected_norm = norm_city("unincorporated" if expected_city.lower() == "unincorporated"
+                                          else expected_city)
+
+                msg_prefix = f"APN prefix **{_mdc_prefix_from_apn(apn)}** → **{expected_city}**"
+                if entered_city_norm != expected_norm:
+                    st.warning(
+                        f"{msg_prefix}. You entered **{final_city or 'Unincorporated'}**. "
+                        "Please double-check which jurisdiction to contact."
+                    )
+                else:
+                    st.info(f"{msg_prefix}. ✅ APN and municipality are consistent.")
+            else:
+                if not apn.strip():
+                    st.info("Enter an APN to validate the Miami-Dade municipality from the folio prefix.")
+                else:
+                    st.info("Couldn’t read a Miami-Dade municipality from this APN. Check the folio format.")
+
         matched, _ = match_contacts(contacts, final_county, final_city)
         if matched.empty:
             st.warning("No contacts configured yet for this jurisdiction."); return
 
         depts = split_by_dept(matched)
         ctx = {"address": addr, "city": final_city, "county": final_county, "apn": apn, "project": project}
+
 
         for dep_key, dep_label in [("building","Building"),("planning","Planning"),("environmental","Environmental"),("fire","Fire")]:
             st.subheader(dep_label)
