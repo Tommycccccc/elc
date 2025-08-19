@@ -15,35 +15,38 @@ DATA_PATH = Path(__file__).parent / "data" / "master.xlsx"
 # ---- Custom button colors ----
 st.markdown("""
 <style>
-
-/* Make ONLY the submit button inside .find-scope green */
-.find-scope [data-testid^="baseButton"]{
+/* Green: the Find submit button inside #findBtn */
+#findBtn .stButton > button,
+#findBtn button {
   background:#2e7d32 !important;   /* green */
   color:#fff !important;
   border:0 !important;
   border-radius:8px !important;
 }
 
-/* Make the portal buttons orange.
-   Depending on Streamlit version they can be baseLinkButton or baseButton. */
-.portal-scope [data-testid^="baseLinkButton"],
-.portal-scope [data-testid^="baseButton"]{
-  background:#fb8c00 !important;    /* orange */
+/* Orange: any link/portal buttons inside .portalScope */
+.portalScope .stButton > button,
+.portalScope a,
+.portalScope button {
+  background:#fb8c00 !important;   /* orange */
   color:#fff !important;
   border:0 !important;
   border-radius:8px !important;
   text-decoration:none !important;
-  display:inline-block !important;
   padding:0.45rem 0.85rem !important;
 }
 
-.portal-scope [data-testid^="baseLinkButton"]:hover,
-.portal-scope [data-testid^="baseButton"]:hover{
+/* Hover tweak */
+.portalScope .stButton > button:hover,
+.portalScope a:hover,
+.portalScope button:hover,
+#findBtn .stButton > button:hover,
+#findBtn button:hover {
   filter:brightness(0.92);
 }
-
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
@@ -628,7 +631,7 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
             show = [c for c in show if c in df.columns]
             st.dataframe(df[show], use_container_width=True)
 
-            st.markdown('<div class="portal-scope">', unsafe_allow_html=True)
+            st.markdown('<div class="portalScope">', unsafe_allow_html=True)
             for url in portal_urls(df):
                 st.link_button("Open Portal", url)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -680,7 +683,10 @@ def page_jurisdiction():
         municipality_override = st.text_input("City / Municipality")
         apn = st.text_input("APN #", placeholder="e.g., 08-46-25-15-00008.0410")
         project = st.text_input("Project #", placeholder="e.g., 25-XXXX")
-
+        # ... inside your st.form(...)
+        st.markdown('<div id="findBtn">', unsafe_allow_html=True)
+        submitted = st.form_submit_button("Find")
+        st.markdown('</div>', unsafe_allow_html=True)
         # --------- NEW: Project type switch (ELC vs AEI) ----------
         project_type = st.radio(
             "Project type",
@@ -689,9 +695,6 @@ def page_jurisdiction():
             help="Choose which company’s templates to use for the request package."
         )
 
-        st.markdown('<div class="find-scope">', unsafe_allow_html=True)
-        submitted = st.form_submit_button("Find")
-        st.markdown('</div>', unsafe_allow_html=True)
 
     if submitted:
         st.session_state.pending_search = {
