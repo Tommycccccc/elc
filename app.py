@@ -12,6 +12,43 @@ st.set_page_config(page_title="ELC Public Records Directory", layout="wide")
 
 DATA_PATH = Path(__file__).parent / "data" / "master.xlsx"
 
+# ---- Custom button colors ----
+st.markdown("""
+<style>
+
+/* Make ONLY the submit button inside .find-scope green */
+.find-scope [data-testid^="baseButton"]{
+  background:#2e7d32 !important;   /* green */
+  color:#fff !important;
+  border:0 !important;
+  border-radius:8px !important;
+}
+
+/* Make the portal buttons orange.
+   Depending on Streamlit version they can be baseLinkButton or baseButton. */
+.portal-scope [data-testid^="baseLinkButton"],
+.portal-scope [data-testid^="baseButton"]{
+  background:#fb8c00 !important;    /* orange */
+  color:#fff !important;
+  border:0 !important;
+  border-radius:8px !important;
+  text-decoration:none !important;
+  display:inline-block !important;
+  padding:0.45rem 0.85rem !important;
+}
+
+.portal-scope [data-testid^="baseLinkButton"]:hover,
+.portal-scope [data-testid^="baseButton"]:hover{
+  filter:brightness(0.92);
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+
+
+
 # ---------------------- NAV + STATE ----------------------
 PAGES = ["📒 Directory", "🧭 Jurisdiction Finder", "🔎 OCULUS Search"]
 
@@ -591,8 +628,10 @@ def _run_and_render_search(addr, county_override, municipality_override, apn, pr
             show = [c for c in show if c in df.columns]
             st.dataframe(df[show], use_container_width=True)
 
+            st.markdown('<div class="portal-scope">', unsafe_allow_html=True)
             for url in portal_urls(df):
                 st.link_button("Open Portal", url)
+            st.markdown('</div>', unsafe_allow_html=True)
 
             tpl = templates.get(dep_key)
             if tpl:
@@ -639,7 +678,7 @@ def page_jurisdiction():
         addr = st.text_input("Address*", placeholder="e.g., 17520 Rockefeller Circle, Fort Myers, FL 33967")
         county_override = st.text_input("County")
         municipality_override = st.text_input("City / Municipality")
-        apn = st.text_input("APN / Parcel #", placeholder="e.g., 08-46-25-15-00008.0410")
+        apn = st.text_input("APN #", placeholder="e.g., 08-46-25-15-00008.0410")
         project = st.text_input("Project #", placeholder="e.g., 25-XXXX")
 
         # --------- NEW: Project type switch (ELC vs AEI) ----------
@@ -647,10 +686,12 @@ def page_jurisdiction():
             "Project type",
             options=["ELC", "AEI"],
             horizontal=True,
-            help="Choose which firm’s templates to use for the request package."
+            help="Choose which company’s templates to use for the request package."
         )
 
+        st.markdown('<div class="find-scope">', unsafe_allow_html=True)
         submitted = st.form_submit_button("Find")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if submitted:
         st.session_state.pending_search = {
